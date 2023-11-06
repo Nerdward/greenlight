@@ -1,0 +1,55 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
+)
+
+// version number
+const version = "1.0.0"
+
+// holds the configuration settings for our app
+type config struct {
+	port int
+	env  string // current operating environment (dev, staging, prod)
+}
+
+// holds dependencies for HTTP handlers, helpers, middleware etc
+type application struct {
+	config config
+	logger *log.Logger
+}
+
+func main() {
+	var cfg config
+
+	flag.IntVar(&cfg.port, "port", 4000, "API server port")
+	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
+	flag.Parse()
+
+	// Initialzie new logger
+	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
+
+	app := &application{
+		config: cfg,
+		logger: logger,
+	}
+
+	// declare a HTTP server with some timeout settings, port number and servemux
+	srv := &http.Server{
+		Addr:         fmt.Sprintf(":%d", cfg.port),
+		Handler:      app.routes(),
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+	}
+
+	logger.Printf("starting %s server on %s", cfg.env, srv.Addr)
+	err := srv.ListenAndServe()
+	logger.Fatal(err)
+
+}
