@@ -4,9 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"flag"
-	"fmt"
-	"log"
-	"net/http"
 	"os"
 	"time"
 
@@ -74,7 +71,7 @@ func main() {
 		// Use the PrintFatal() method to write a log entry containing the error at the
 		// FATAL level and exit. We have no additional properties to include in the log
 		// entry, so we pass nil as the second parameter.
-		logger.PrintError(err, nil)
+		logger.PrintFatal(err, nil)
 	}
 
 	defer db.Close()
@@ -88,25 +85,10 @@ func main() {
 	}
 
 	// declare a HTTP server with some timeout settings, port number and servemux
-	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.port),
-		Handler:      app.routes(),
-		IdleTimeout:  time.Minute,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		// Create a new Go log.Logger instance with the log.New() function, passing in
-		// our custom Logger as the first parameter. The "" and 0 indicate that the
-		// log.Logger instance should not use a prefix or any flags.
-		ErrorLog: log.New(logger, "", 0),
+	err = app.serve()
+	if err != nil {
+		logger.PrintFatal(err, nil)
 	}
-
-	logger.PrintInfo("starting server", map[string]string{
-		"addr": srv.Addr,
-		"env":  cfg.env,
-	})
-
-	err = srv.ListenAndServe()
-	logger.PrintFatal(err, nil)
 
 }
 
