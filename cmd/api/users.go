@@ -54,13 +54,19 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	err = app.mailer.Send(user.Email, "user_welcome.tmpl.html", user)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
+	// Use the background helper to execute an anonymous function that sends the welcome
+	// email.
+	app.background(func() {
+		err = app.mailer.Send(user.Email, "user_welcome.tmpl.html", user)
+		if err != nil {
+			app.logger.PrintError(err, nil)
+		}
+	})
 
-	err = app.writeJSON(w, http.StatusCreated, envelope{"user": user}, nil)
+	// Note that we also change this to send the client a 202 Accepted status code.
+	// This status code indicates that the request has been accepted for processing, but
+	// the processing has not been completed.
+	err = app.writeJSON(w, http.StatusAccepted, envelope{"user": user}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
